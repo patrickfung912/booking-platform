@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpaceShare HK - 場地預訂平台</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'PingFang TC', 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            color: #333;
+            line-height: 1.6;
+            padding-bottom: 70px;
+        }
+        
+        /* 底部導航欄 */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+        }
+        
+        .nav-item.active {
+            color: #4F46E5;
+        }
+        
+        .nav-icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+        
+        /* 頁面容器 */
+        .page {
+            display: none;
+            padding: 15px;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        /* 搜索欄 */
+        .search-bar {
+            background: white;
+            border-radius: 10px;
+            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .search-icon {
+            color: #999;
+            margin-right: 10px;
+        }
+        
+        .search-input {
+            border: none;
+            outline: none;
+            flex: 1;
+            font-size: 16px;
+        }
+        
+        /* 分類滾動區 */
+        .categories {
+            display: flex;
+            overflow-x: auto;
+            padding: 10px 0;
+            margin-bottom: 15px;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .category-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-right: 20px;
+            min-width: 60px;
+        }
+        
+        .category-icon {
+            width: 50px;
+            height: 50px;
+            background: #eef2ff;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 5px;
+            color: #4F46E5;
+            font-size: 20px;
+        }
+        
+        .category-name {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        /* 場地卡片 */
+        .venue-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            cursor: pointer;
+        }
+        
+        .venue-image {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+        }
+        
+        .venue-info {
+            padding: 12px;
+        }
+        
+        .venue-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .venue-rating {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .stars {
+            color: #FFC107;
+            margin-right: 5px;
+        }
+        
+        .venue-location {
+            display: flex;
+            align-items: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .venue-price {
+            font-weight: 600;
+            color: #4F46E5;
+            font-size: 16px;
+        }
+        
+        /* 活動卡片 */
+        .event-card {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .event-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .event-details {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .event-participants {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .participant-avatars {
+            display: flex;
+            margin-right: 10px;
+        }
+        
+        .avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            margin-right: -8px;
+            border: 2px solid white;
+        }
+        
+        .join-button {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        /* 首頁橫幅 */
+        .banner {
+            background: linear-gradient(135deg, #4F46E5, #7E22CE);
+            border-radius: 12px;
+            padding: 20px;
+            color: white;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .banner-content {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .banner-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .banner-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 15px;
+        }
+        
+        .banner-button {
+            background: white;
+            color: #4F46E5;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .banner-pattern {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 120px;
+            height: 100%;
+            background: rgba(255,255,255,0.1);
+            border-radius: 0 12px 12px 0;
+        }
+        
+        /* 優惠與廣告區域 */
+        .promo-section {
+            margin: 20px 0;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        
+        .view-all {
+            color: #4F46E5;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        .promo-cards {
+            display: flex;
+            overflow-x: auto;
+            gap: 15px;
+            padding-bottom: 5px;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .promo-card {
+            min-width: 280px;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .promo-image {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+        }
+        
+        .promo-content {
+            padding: 12px;
+        }
+        
+        .promo-badge {
+            background: #EF4444;
+            color: white;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+        
+        .promo-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .promo-desc {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .promo-date {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        /* 廣告橫幅 */
+        .ad-banner {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px dashed #4F46E5;
+        }
+        
+        .ad-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #4F46E5;
+        }
+        
+        .ad-desc {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+        
+        .ad-button {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        /* 篩選頁面 */
+        .filter-section {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .filter-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .filter-option {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            padding: 8px 15px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        .filter-option.active {
+            background: #4F46E5;
+            color: white;
+            border-color: #4F46E5;
+        }
+        
+        .date-time-selector {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .date-input, .time-select {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .search-button {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        
+        /* 頁面標題 */
+        .page-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        
+        /* 地圖頁面 */
+        #map-container {
+            height: 70vh;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        
+        .map-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        
+        .results-count {
+            font-weight: 600;
+        }
+        
+        .view-toggle {
+            display: flex;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .view-option {
+            padding: 8px 12px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        .view-option.active {
+            background: #4F46E5;
+            color: white;
+        }
+        
+        /* 個人資料區域 */
+        .profile-header {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .profile-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #666;
+        }
+        
+        .profile-info h2 {
+            margin-bottom: 5px;
+        }
+        
+        .profile-info p {
+            color: #666;
+        }
+        
+        .menu-item {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .menu-icon {
+            width: 40px;
+            height: 40px;
+            background: #eef2ff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            color: #4F46E5;
+        }
+        
+        /* 組隊頁面 */
+        .create-event-btn {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+        
+        /* 收藏頁面 */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+        
+        .empty-icon {
+            font-size: 50px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+        
+        /* 頁面標題與返回按鈕 */
+        .page-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .back-button {
+            margin-right: 10px;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        
+        /* 場地詳情頁 */
+        .venue-detail-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .venue-detail-name {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .venue-detail-info {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .info-row {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        
+        .info-label {
+            width: 80px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .info-value {
+            flex: 1;
+            font-size: 14px;
+        }
+        
+        .table-booking-section {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .table-list {
+            margin-top: 15px;
+        }
+        
+        .table-item {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .table-name {
+            font-weight: 600;
+        }
+        
+        .table-price {
+            color: #4F46E5;
+            font-weight: 600;
+        }
+        
+        .time-slots {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .time-slot {
+            padding: 6px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        .time-slot.available {
+            background: #f0f9ff;
+            border-color: #0ea5e9;
+            color: #0ea5e9;
+        }
+        
+        .time-slot.booked {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+            color: #94a3b8;
+            text-decoration: line-through;
+        }
+        
+        .time-slot.selected {
+            background: #4F46E5;
+            border-color: #4F46E5;
+            color: white;
+        }
+        
+        /* 固定底部操作欄 */
+        .action-bar {
+            position: fixed;
+            bottom: 70px;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .selected-info {
+            font-size: 14px;
+        }
+        
+        .book-button {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .book-button:disabled {
+            background: #cbd5e1;
+        }
+    </style>
+</head>
+<body>
+    <!-- 首頁 -->
+    <div id="home-page" class="page active">
+        <!-- 橫幅 -->
+        <div class="banner">
+            <div class="banner-content">
+                <div class="banner-title">限時優惠！預訂即享8折</div>
+                <div class="banner-subtitle">精選運動場地、派對房間，優惠至本月底</div>
+                <button class="banner-button">立即查看</button>
+            </div>
+            <div class="banner-pattern"></div>
+        </div>
+        
+        <!-- 搜索欄 -->
+        <div class="search-bar">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" placeholder="搜尋場地、活動或地點">
+        </div>
+        
+        <!-- 分類 -->
+        <div class="categories">
+            <div class="category-item">
+                <div class="category-icon">🏸</div>
+                <div class="category-name">羽毛球</div>
+            </div>
+            <div class="category-item">
+                <div class="category-icon">🏓</div>
+                <div class="category-name">乒乓球</div>
+            </div>
+            <div class="category-item">
+                <div class="category-icon">🏀</div>
+                <div class="category-name">籃球</div>
+            </div>
+            <div class="category-item">
+                <div class="category-icon">🎉</div>
+                <div class="category-name">派對</div>
+            </div>
+            <div class="category-item">
+                <div class="category-icon">💼</div>
+                <div class="category-name">工作</div>
+            </div>
+            <div class="category-item">
+                <div class="category-icon">🏋️</div>
+                <div class="category-name">健身</div>
+            </div>
+        </div>
+        
+        <!-- 精選場地 -->
+        <div class="section-header">
+            <div class="section-title">精選場地</div>
+            <div class="view-all">查看全部</div>
+        </div>
+        
+        <div class="venue-card" data-venue-id="1">
+            <img src="https://images.unsplash.com/photo-1595435934247-5d2e5cb6e95b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="羽毛球場" class="venue-image">
+            <div class="venue-info">
+                <div class="venue-name">銅鑼灣羽毛球中心</div>
+                <div class="venue-rating">
+                    <span class="stars">★★★★★</span>
+                    <span>4.9 (128)</span>
+                </div>
+                <div class="venue-location">
+                    <span>📍</span> 銅鑼灣告士打道280號
+                </div>
+                <div class="venue-price">$180 / 小時</div>
+            </div>
+        </div>
+        
+        <div class="venue-card" data-venue-id="2">
+            <img src="https://images.unsplash.com/photo-1511882150382-421056c89033?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="乒乓球場" class="venue-image">
+            <div class="venue-info">
+                <div class="venue-name">旺角乒乓天地</div>
+                <div class="venue-rating">
+                    <span class="stars">★★★★☆</span>
+                    <span>4.7 (89)</span>
+                </div>
+                <div class="venue-location">
+                    <span>📍</span> 旺角彌敦道655號
+                </div>
+                <div class="venue-price">$120 / 小時</div>
+            </div>
+        </div>
+        
+        <!-- 廣告橫幅 -->
+        <div class="ad-banner">
+            <div class="ad-title">場地主人招募計劃</div>
+            <div class="ad-desc">將您的場地加入平台，輕鬆增加收入</div>
+            <button class="ad-button">了解更多</button>
+        </div>
+        
+        <!-- 近期優惠 -->
+        <div class="promo-section">
+            <div class="section-header">
+                <div class="section-title">近期優惠</div>
+                <div class="view-all">查看全部</div>
+            </div>
+            
+            <div class="promo-cards">
+                <div class="promo-card">
+                    <img src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="健身優惠" class="promo-image">
+                    <div class="promo-content">
+                        <div class="promo-badge">限時優惠</div>
+                        <div class="promo-title">健身室月卡7折</div>
+                        <div class="promo-desc">精選健身室月卡限時7折，立即預約體驗</div>
+                        <div class="promo-date">至2023年12月31日</div>
+                    </div>
+                </div>
+                
+                <div class="promo-card">
+                    <img src="https://images.unsplash.com/photo-1546519638-68e109498ffc?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="籃球優惠" class="promo-image">
+                    <div class="promo-content">
+                        <div class="promo-badge">新用戶專享</div>
+                        <div class="promo-title">首次預訂籃球場85折</div>
+                        <div class="promo-desc">新用戶首次預訂籃球場可享85折優惠</div>
+                        <div class="promo-date">至2023年11月30日</div>
+                    </div>
+                </div>
+                
+                <div class="promo-card">
+                    <img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="泳池優惠" class="promo-image">
+                    <div class="promo-content">
+                        <div class="promo-badge">季節限定</div>
+                        <div class="promo-title">室內泳池預訂9折</div>
+                        <div class="promo-desc">秋冬季室內泳池預訂享9折優惠</div>
+                        <div class="promo-date">至2024年2月28日</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 熱門活動 -->
+        <div class="section-header">
+            <div class="section-title">熱門活動</div>
+            <div class="view-all">查看全部</div>
+        </div>
+        
+        <div class="event-card">
+            <div class="event-title">週三晚上羽毛球同樂 - 缺2人</div>
+            <div class="event-details">
+                <span>🏸 銅鑼灣羽毛球中心</span>
+                <span style="margin: 0 10px;">|</span>
+                <span>⏰ 本週三 19:00-21:00</span>
+            </div>
+            <div class="event-participants">
+                <div class="participant-avatars">
+                    <div class="avatar"></div>
+                    <div class="avatar"></div>
+                    <div class="avatar"></div>
+                </div>
+                <span style="font-size: 14px; color: #666;">已有 3 人參加</span>
+                <button class="join-button" style="margin-left: auto;">立即參加</button>
+            </div>
+        </div>
+        
+        <div class="event-card">
+            <div class="event-title">週六上午新手乒乓球練習</div>
+            <div class="event-details">
+                <span>🏓 旺角乒乓天地</span>
+                <span style="margin: 0 10px;">|</span>
+                <span>⏰ 本週六 10:00-12:00</span>
+            </div>
+            <div class="event-participants">
+                <div class="participant-avatars">
+                    <div class="avatar"></div>
+                    <div class="avatar"></div>
+                </div>
+                <span style="font-size: 14px; color: #666;">已有 2 人參加</span>
+                <button class="join-button" style="margin-left: auto;">立即參加</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 探索篩選頁 -->
+    <div id="explore-filter-page" class="page">
+        <h1 class="page-title">探索場地</h1>
+        
+        <div class="filter-section">
+            <div class="section-title">運動類型</div>
+            <div class="filter-options">
+                <div class="filter-option active">乒乓球</div>
+                <div class="filter-option">羽毛球</div>
+                <div class="filter-option">籃球</div>
+                <div class="filter-option">足球</div>
+                <div class="filter-option">網球</div>
+                <div class="filter-option">壁球</div>
+            </div>
+        </div>
+        
+        <div class="filter-section">
+            <div class="section-title">地區</div>
+            <div class="filter-options">
+                <div class="filter-option active">港島</div>
+                <div class="filter-option">九龍</div>
+                <div class="filter-option">新界</div>
+                <div class="filter-option">離島</div>
+            </div>
+        </div>
+        
+        <div class="filter-section">
+            <div class="section-title">日期與時間</div>
+            <div class="date-time-selector">
+                <input type="date" class="date-input" id="booking-date">
+                <select class="time-select" id="booking-time">
+                    <option value="08:00-10:00">08:00-10:00</option>
+                    <option value="10:00-12:00">10:00-12:00</option>
+                    <option value="12:00-14:00">12:00-14:00</option>
+                    <option value="14:00-16:00">14:00-16:00</option>
+                    <option value="16:00-18:00">16:00-18:00</option>
+                    <option value="18:00-20:00">18:00-20:00</option>
+                    <option value="20:00-22:00">20:00-22:00</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="filter-section">
+            <div class="section-title">價格範圍 (每小時)</div>
+            <div class="filter-options">
+                <div class="filter-option">$0-$100</div>
+                <div class="filter-option active">$100-$200</div>
+                <div class="filter-option">$200-$300</div>
+                <div class="filter-option">$300+</div>
+            </div>
+        </div>
+        
+        <button class="search-button" id="search-venues">搜尋場地</button>
+    </div>
+    
+    <!-- 地圖結果頁 -->
+    <div id="map-results-page" class="page">
+        <div class="page-header">
+            <div class="back-button" id="back-from-map">←</div>
+            <h1 class="page-title">地圖結果</h1>
+        </div>
+        
+        <div class="map-controls">
+            <div class="results-count">找到 8 個場地</div>
+            <div class="view-toggle">
+                <div class="view-option active" id="map-view">地圖</div>
+                <div class="view-option" id="list-view">列表</div>
+            </div>
+        </div>
+        
+        <div id="map-container"></div>
+        
+        <div id="venue-list" style="display: none;">
+            <div class="venue-card" data-venue-id="1">
+                <img src="https://via.placeholder.com/400x200/4F46E5/FFFFFF?text=乒乓球中心" alt="乒乓球中心" class="venue-image">
+                <div class="venue-info">
+                    <div class="venue-name">銅鑼灣乒乓球中心</div>
+                    <div class="venue-rating">
+                        <span class="stars">★★★★★</span>
+                        <span>4.9 (128)</span>
+                    </div>
+                    <div class="venue-location">
+                        <span>📍</span> 銅鑼灣告士打道280號
+                    </div>
+                    <div class="venue-price">$150 / 小時</div>
+                </div>
+            </div>
+            
+            <div class="venue-card" data-venue-id="2">
+                <img src="https://via.placeholder.com/400x200/10B981/FFFFFF?text=乒乓天地" alt="乒乓天地" class="venue-image">
+                <div class="venue-info">
+                    <div class="venue-name">旺角乒乓天地</div>
+                    <div class="venue-rating">
+                        <span class="stars">★★★★☆</span>
+                        <span>4.7 (89)</span>
+                    </div>
+                    <div class="venue-location">
+                        <span>📍</span> 旺角彌敦道655號
+                    </div>
+                    <div class="venue-price">$120 / 小時</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 場地詳情頁 -->
+    <div id="venue-detail-page" class="page">
+        <div class="page-header">
+            <div class="back-button" id="back-from-detail">←</div>
+            <h1 class="page-title">場地詳情</h1>
+        </div>
+        
+        <img src="https://images.unsplash.com/photo-1511882150382-421056c89033?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="銅鑼灣乒乓球中心" class="venue-detail-image">
+        
+        <div class="venue-detail-info">
+            <div class="venue-detail-name">銅鑼灣乒乓球中心</div>
+            
+            <div class="info-row">
+                <div class="info-label">評分</div>
+                <div class="info-value">
+                    <span class="stars">★★★★★</span> 4.9 (128則評價)
+                </div>
+            </div>
+            
+            <div class="info-row">
+                <div class="info-label">地址</div>
+                <div class="info-value">銅鑼灣告士打道280號世貿中心5樓</div>
+            </div>
+            
+            <div class="info-row">
+                <div class="info-label">營業時間</div>
+                <div class="info-value">09:00 - 22:00</div>
+            </div>
+            
+            <div class="info-row">
+                <div class="info-label">設施</div>
+                <div class="info-value">冷氣、更衣室、淋浴間、飲水機、器材租借</div>
+            </div>
+            
+            <div class="info-row">
+                <div class="info-label">費用</div>
+                <div class="info-value">$150/小時 (平日), $180/小時 (周末及假日)</div>
+            </div>
+        </div>
+        
+        <div class="table-booking-section">
+            <div class="section-title">選擇乒乓球枱</div>
+            <div class="date-display" style="margin-bottom: 15px; font-weight: 600;">2023年11月15日 (星期三)</div>
+            
+            <div class="table-list">
+                <div class="table-item">
+                    <div class="table-header">
+                        <div class="table-name">乒乓球枱 1</div>
+                        <div class="table-price">$150/小時</div>
+                    </div>
+                    <div class="time-slots">
+                        <div class="time-slot available">09:00-10:00</div>
+                        <div class="time-slot available">10:00-11:00</div>
+                        <div class="time-slot available">11:00-12:00</div>
+                        <div class="time-slot booked">12:00-13:00</div>
+                        <div class="time-slot available">13:00-14:00</div>
+                        <div class="time-slot available">14:00-15:00</div>
+                        <div class="time-slot available">15:00-16:00</div>
+                        <div class="time-slot available">16:00-17:00</div>
+                    </div>
+                </div>
+                
+                <div class="table-item">
+                    <div class="table-header">
+                        <div class="table-name">乒乓球枱 2</div>
+                        <div class="table-price">$150/小時</div>
+                    </div>
+                    <div class="time-slots">
+                        <div class="time-slot available">09:00-10:00</div>
+                        <div class="time-slot available">10:00-11:00</div>
+                        <div class="time-slot available">11:00-12:00</div>
+                        <div class="time-slot available">12:00-13:00</div>
+                        <div class="time-slot available">13:00-14:00</div>
+                        <div class="time-slot booked">14:00-15:00</div>
+                        <div class="time-slot available">15:00-16:00</div>
+                        <div class="time-slot available">16:00-17:00</div>
+                    </div>
+                </div>
+                
+                <div class="table-item">
+                    <div class="table-header">
+                        <div class="table-name">乒乓球枱 3</div>
+                        <div class="table-price">$150/小時</div>
+                    </div>
+                    <div class="time-slots">
+                        <div class="time-slot available">09:00-10:00</div>
+                        <div class="time-slot available">10:00-11:00</div>
+                        <div class="time-slot available">11:00-12:00</div>
+                        <div class="time-slot available">12:00-13:00</div>
+                        <div class="time-slot available">13:00-14:00</div>
+                        <div class="time-slot available">14:00-15:00</div>
+                        <div class="time-slot available">15:00-16:00</div>
+                        <div class="time-slot available">16:00-17:00</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="action-bar">
+            <div class="selected-info">請選擇時間段</div>
+            <button class="book-button" disabled>立即預訂</button>
+        </div>
+    </div>
+    
+    <!-- 組隊頁 -->
+    <div id="match-page" class="page">
+        <h1 class="page-title">尋找隊友</h1>
+        
+        <button class="create-event-btn">+ 發起新活動</button>
+        
+        <div class="filter-options" style="margin-bottom: 15px;">
+            <div class="filter-option active">全部活動</div>
+            <div class="filter-option">羽毛球</div>
+            <div class="filter-option">乒乓球</div>
+            <div class="filter-option">籃球</div>
+            <div class="filter-option">足球</div>
+        </div>
+        
+        <div class="event-card">
+            <div class="event-title">週五晚上籃球3對3 - 缺1人</div>
+            <div class="event-details">
+                <span>🏀 城市籃球公園</span>
+                <span style="margin: 0 10px;">|</span>
+                <span>⏰ 本週五 20:00-22:00</span>
+            </div>
+            <div class="event-participants">
+                <div class="participant-avatars">
+                    <div class="avatar"></div>
+                    <div class="avatar"></div>
+                    <div class="avatar"></div>
+                    <div class="avatar"></div>
+                    <div class="avatar"></div>
+                </div>
+                <span style="font-size: 14px; color: #666;">已有 5 人參加</span>
+                <button class="join-button" style="margin-left: auto;">立即參加</button>
+            </div>
+        </div>
+        
+        <div class="event-card">
+            <div class="event-title">週六上午新手羽球練習</div>
+            <div class="event-details">
+                <span>🏸 活力羽球館</span>
+                <span style="margin: 0 10px;">|</span>
+                <span>⏰ 本週六 10:00-12:00</span>
+            </div>
+            <div class="event-participants">
+                <div class="participant-avatars">
+                    <div class="avatar"></div>
+                    <div class="avatar"></div>
+                </div>
+                <span style="font-size: 14px; color: #666;">已有 2 人參加</span>
+                <button class="join-button" style="margin-left: auto;">立即參加</button>
+            </div>
+        </div>
+        
+        <div class="event-card">
+            <div class="event-title">週日下午乒乓球友誼賽</div>
+            <div class="event-details">
+                <span>🏓 旺角乒乓天地</span>
+                <span style="margin: 0 10px;">|</span>
+                <span>⏰ 本週日 14:00-16:00</span>
+            </div>
+            <div class="event-participants">
+                <div class="participant-avatars">
+                    <div class="avatar"></div>
+                    <div class="avatar"></div>
+                    <div class="avatar"></div>
+                    <div class="avatar"></div>
+                </div>
+                <span style="font-size: 14px; color: #666;">已有 4 人參加</span>
+                <button class="join-button" style="margin-left: auto;">立即參加</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 收藏頁 -->
+    <div id="favorites-page" class="page">
+        <h1 class="page-title">我的收藏</h1>
+        
+        <div class="venue-card" data-venue-id="1">
+            <img src="https://images.unsplash.com/photo-1595435934247-5d2e5cb6e95b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="羽毛球場" class="venue-image">
+            <div class="venue-info">
+                <div class="venue-name">銅鑼灣羽毛球中心</div>
+                <div class="venue-rating">
+                    <span class="stars">★★★★★</span>
+                    <span>4.9 (128)</span>
+                </div>
+                <div class="venue-location">
+                    <span>📍</span> 銅鑼灣告士打道280號
+                </div>
+                <div class="venue-price">$180 / 小時</div>
+            </div>
+        </div>
+        
+        <div class="venue-card" data-venue-id="2">
+            <img src="https://images.unsplash.com/photo-1511882150382-421056c89033?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="乒乓球場" class="venue-image">
+            <div class="venue-info">
+                <div class="venue-name">旺角乒乓天地</div>
+                <div class="venue-rating">
+                    <span class="stars">★★★★☆</span>
+                    <span>4.7 (89)</span>
+                </div>
+                <div class="venue-location">
+                    <span>📍</span> 旺角彌敦道655號
+                </div>
+                <div class="venue-price">$120 / 小時</div>
+            </div>
+        </div>
+        
+        <div class="venue-card" data-venue-id="3">
+            <img src="https://images.unsplash.com/photo-1546519638-68e109498ffc?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="籃球場" class="venue-image">
+            <div class="venue-info">
+                <div class="venue-name">城市籃球公園</div>
+                <div class="venue-rating">
+                    <span class="stars">★★★★☆</span>
+                    <span>4.5 (76)</span>
+                </div>
+                <div class="venue-location">
+                    <span>📍</span> 九龍灣常悅道18號
+                </div>
+                <div class="venue-price">$200 / 小時</div>
+            </div>
+        </div>
+        
+        <div class="empty-state" style="display: none;">
+            <div class="empty-icon">❤️</div>
+            <div>尚未收藏任何場地</div>
+            <div style="font-size: 14px; margin-top: 10px;">探索場地並加入收藏，方便日後預訂</div>
+        </div>
+    </div>
+    
+    <!-- 個人頁 -->
+    <div id="profile-page" class="page">
+        <div class="profile-header">
+            <div class="profile-avatar">👤</div>
+            <div class="profile-info">
+                <h2>張小明</h2>
+                <p>普通會員</p>
+            </div>
+        </div>
+        
+        <div class="menu-item">
+            <div class="menu-icon">📋</div>
+            <div>我的訂單</div>
+        </div>
+        
+        <div class="menu-item">
+            <div class="menu-icon">🎯</div>
+            <div>我發起的活動</div>
+        </div>
+        
+        <div class="menu-item">
+            <div class="menu-icon">🤝</div>
+            <div>我參加的活動</div>
+        </div>
+        
+        <div class="menu-item">
+            <div class="menu-icon">⭐</div>
+            <div>會員與優惠</div>
+        </div>
+        
+        <div class="menu-item">
+            <div class="menu-icon">🔔</div>
+            <div>通知設定</div>
+        </div>
+        
+        <div class="menu-item">
+            <div class="menu-icon">❓</div>
+            <div>幫助與支援</div>
+        </div>
+        
+        <div class="menu-item">
+            <div class="menu-icon">⚙️</div>
+            <div>帳戶設定</div>
+        </div>
+    </div>
+    
+    <!-- 底部導航 -->
+    <div class="bottom-nav">
+        <div class="nav-item active" data-page="home-page">
+            <div class="nav-icon">🏠</div>
+            <div>首頁</div>
+        </div>
+        <div class="nav-item" data-page="explore-filter-page">
+            <div class="nav-icon">🔍</div>
+            <div>探索</div>
+        </div>
+        <div class="nav-item" data-page="match-page">
+            <div class="nav-icon">⚡</div>
+            <div>組隊</div>
+        </div>
+        <div class="nav-item" data-page="favorites-page">
+            <div class="nav-icon">❤️</div>
+            <div>收藏</div>
+        </div>
+        <div class="nav-item" data-page="profile-page">
+            <div class="nav-icon">👤</div>
+            <div>我的</div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        // 頁面導航功能
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                if (this.classList.contains('active')) return;
+                
+                // 移除所有active類
+                document.querySelectorAll('.nav-item').forEach(nav => {
+                    nav.classList.remove('active');
+                });
+                document.querySelectorAll('.page').forEach(page => {
+                    page.classList.remove('active');
+                });
+                
+                // 添加active類到當前點擊的項目
+                this.classList.add('active');
+                const pageId = this.getAttribute('data-page');
+                document.getElementById(pageId).classList.add('active');
+            });
+        });
+        
+        // 篩選選項功能
+        document.querySelectorAll('.filter-option').forEach(option => {
+            option.addEventListener('click', function() {
+                // 如果是單選類別，先清除同組的active狀態
+                if (this.parentElement.classList.contains('filter-options')) {
+                    const isSingleSelect = this.parentElement.parentElement.querySelector('.section-title').textContent !== '設施';
+                    if (isSingleSelect) {
+                        this.parentElement.querySelectorAll('.filter-option').forEach(opt => {
+                            opt.classList.remove('active');
+                        });
+                    }
+                }
+                
+                this.classList.toggle('active');
+            });
+        });
+        
+        // 搜尋按鈕 - 前往地圖結果頁
+        document.getElementById('search-venues').addEventListener('click', function() {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById('map-results-page').classList.add('active');
+            
+            // 初始化地圖
+            initMap();
+        });
+        
+        // 返回按鈕功能
+        document.getElementById('back-from-map').addEventListener('click', function() {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById('explore-filter-page').classList.add('active');
+        });
+        
+        document.getElementById('back-from-detail').addEventListener('click', function() {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById('map-results-page').classList.add('active');
+        });
+        
+        // 地圖/列表視圖切換
+        document.getElementById('map-view').addEventListener('click', function() {
+            if (this.classList.contains('active')) return;
+            
+            document.getElementById('map-view').classList.add('active');
+            document.getElementById('list-view').classList.remove('active');
+            document.getElementById('map-container').style.display = 'block';
+            document.getElementById('venue-list').style.display = 'none';
+        });
+        
+        document.getElementById('list-view').addEventListener('click', function() {
+            if (this.classList.contains('active')) return;
+            
+            document.getElementById('list-view').classList.add('active');
+            document.getElementById('map-view').classList.remove('active');
+            document.getElementById('map-container').style.display = 'none';
+            document.getElementById('venue-list').style.display = 'block';
+        });
+        
+        // 場地卡片點擊 - 前往詳情頁
+        document.querySelectorAll('.venue-card').forEach(card => {
+            card.addEventListener('click', function() {
+                document.querySelectorAll('.page').forEach(page => {
+                    page.classList.remove('active');
+                });
+                document.getElementById('venue-detail-page').classList.add('active');
+            });
+        });
+        
+        // 加入活動功能
+        document.querySelectorAll('.join-button').forEach(button => {
+            button.addEventListener('click', function() {
+                alert('已成功加入活動！');
+                this.textContent = '已參加';
+                this.style.backgroundColor = '#10B981';
+                this.disabled = true;
+            });
+        });
+        
+        // 發起活動按鈕
+        document.querySelector('.create-event-btn').addEventListener('click', function() {
+            alert('開啟發起活動表單');
+        });
+        
+        // 時間段選擇功能
+        document.querySelectorAll('.time-slot.available').forEach(slot => {
+            slot.addEventListener('click', function() {
+                // 清除同一張枱的其他選擇
+                const tableItem = this.closest('.table-item');
+                tableItem.querySelectorAll('.time-slot').forEach(s => {
+                    s.classList.remove('selected');
+                });
+                
+                // 標記當前選擇
+                this.classList.add('selected');
+                
+                // 更新底部操作欄信息
+                const tableName = tableItem.querySelector('.table-name').textContent;
+                const timeText = this.textContent;
+                document.querySelector('.selected-info').textContent = `已選擇: ${tableName}, ${timeText}`;
+                document.querySelector('.book-button').disabled = false;
+            });
+        });
+        
+        // 預訂按鈕
+        document.querySelector('.book-button').addEventListener('click', function() {
+            if (!this.disabled) {
+                alert('預訂成功！');
+            }
+        });
+        
+        // 初始化地圖
+        function initMap() {
+            // 如果地圖已經初始化，則返回
+            if (window.venueMap) {
+                return;
+            }
+            
+            // 設置地圖中心為香港
+            window.venueMap = L.map('map-container').setView([22.3193, 114.1694], 12);
+            
+            // 添加地圖圖層
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(window.venueMap);
+            
+            // 添加場地標記
+            const venues = [
+                {id: 1, name: "銅鑼灣乒乓球中心", lat: 22.2803, lng: 114.1831, price: "$150/小時"},
+                {id: 2, name: "旺角乒乓天地", lat: 22.3199, lng: 114.1696, price: "$120/小時"},
+                {id: 3, name: "尖沙咀體育館", lat: 22.2974, lng: 114.1720, price: "$180/小時"},
+                {id: 4, name: "灣仔運動場", lat: 22.2783, lng: 114.1746, price: "$140/小時"},
+                {id: 5, name: "觀塘乒乓球會", lat: 22.3124, lng: 114.2255, price: "$110/小時"}
+            ];
+            
+            venues.forEach(venue => {
+                const marker = L.marker([venue.lat, venue.lng]).addTo(window.venueMap);
+                marker.bindPopup(`
+                    <div style="min-width: 200px;">
+                        <h3 style="margin: 0 0 8px;">${venue.name}</h3>
+                        <p style="margin: 0 0 5px; color: #4F46E5; font-weight: 600;">${venue.price}</p>
+                        <button onclick="openVenueDetail(${venue.id})" style="background: #4F46E5; color: white; border: none; padding: 8px 12px; border-radius: 6px; width: 100%;">查看詳情</button>
+                    </div>
+                `);
+            });
+        }
+        
+        // 從地圖標記打開場地詳情
+        function openVenueDetail(venueId) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById('venue-detail-page').classList.add('active');
+        }
+        
+        // 設置默認日期為明天
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const formattedDate = tomorrow.toISOString().split('T')[0];
+        if(document.getElementById('booking-date')) {
+            document.getElementById('booking-date').value = formattedDate;
+        }
+    </script>
+</body>
+</html>
